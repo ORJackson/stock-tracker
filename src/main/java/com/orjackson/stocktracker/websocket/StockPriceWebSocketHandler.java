@@ -12,6 +12,7 @@ public class StockPriceWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
+        System.out.println("New WebSocket connection established");
         try {
             // Fetch default stock price (Apple - AAPL) on connection
             String stockSymbol = "AAPL";
@@ -24,12 +25,14 @@ public class StockPriceWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
+        System.out.println("Received message: " + message.getPayload());
         String stockSymbol = message.getPayload().toUpperCase(); // 🔹 Get the requested stock symbol from client
         String stockPrice = getStockPrice(stockSymbol);
         session.sendMessage(new TextMessage(stockSymbol + " Price: $" + stockPrice));
     }
 
     private String getStockPrice(String symbol) {
+        System.out.println("Getting stock price for: " + symbol);
         try {
             RestTemplate restTemplate = new RestTemplate();
             String url = String.format(API_URL, symbol);
