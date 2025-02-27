@@ -82,20 +82,35 @@ public class StockPriceWebSocketHandler extends TextWebSocketHandler {
 
     private String getStockPrice(String symbol) {
         System.out.println("Fetching stock price for: " + symbol);
+
         try {
             RestTemplate restTemplate = new RestTemplate();
             String url = String.format(API_URL, symbol);
             String response = restTemplate.getForObject(url, String.class);
 
+            // 🔹 Log the exact response received
+            System.out.println("Raw API Response for " + symbol + ": " + response);
+
             JSONObject json = new JSONObject(response);
+
+            // Handle missing "Global Quote"
+            if (!json.has("Global Quote")) {
+                System.err.println("Error: 'Global Quote' key is missing! Full response: " + response);
+                return "Error: No stock data available.";
+            }
+
             JSONObject stockData = json.getJSONObject("Global Quote");
 
+            // Handle missing "05. price"
+            if (!stockData.has("05. price")) {
+                System.err.println("Error: '05. price' key is missing! Full response: " + response);
+                return "Error: No price data available.";
+            }
+
             return stockData.getString("05. price");
-        } catch (JSONException e) {
-            System.err.println("JSON parsing error: " + e.getMessage());
-            return "Error: Invalid response from API.";
+
         } catch (Exception e) {
-            System.err.println("API request failed: " + e.getMessage());
+            System.err.println("Exception while fetching stock data: " + e.getMessage());
             return "Error: API request failed.";
         }
     }
