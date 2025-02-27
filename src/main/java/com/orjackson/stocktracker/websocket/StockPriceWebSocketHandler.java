@@ -88,7 +88,7 @@ public class StockPriceWebSocketHandler extends TextWebSocketHandler {
             String url = String.format(API_URL, symbol);
             String response = restTemplate.getForObject(url, String.class);
 
-            // 🔹 Log the exact response received
+            // Log the exact response received
             System.out.println("Raw API Response for " + symbol + ": " + response);
 
             JSONObject json = new JSONObject(response);
