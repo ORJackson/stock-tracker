@@ -11,6 +11,9 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class StockPriceWebSocketHandler extends TextWebSocketHandler {
@@ -18,7 +21,7 @@ public class StockPriceWebSocketHandler extends TextWebSocketHandler {
 
     private static final String API_URL = "https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=%s&apikey=" + API_KEY;
 
-    // 10 minute cache duration, this is a portfolio project and the Alpha Vantage api has a 25 call per day rate limit!
+    // 10 minute cache duration, this is a hobby project and the Alpha Vantage api has a 25 call per day rate limit!
     private static final long CACHE_DURATION_SECONDS = 600;
     private static final ConcurrentHashMap<String, CachedStock> cache = new ConcurrentHashMap<>();
 
@@ -26,6 +29,8 @@ public class StockPriceWebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
         System.out.println("New WebSocket connection established: " + session.getId());
+        // run cache cleanup
+        cleanUpExpiredCache();
     }
 
     @Override
@@ -66,6 +71,7 @@ public class StockPriceWebSocketHandler extends TextWebSocketHandler {
             // Convert valid price to BigDecimal and cache it
             BigDecimal price = new BigDecimal(stockPriceResponse);
             cache.put(stockSymbol, new CachedStock(price, Instant.now()));
+            limitCacheSize();
 
             sendMessage(session, stockSymbol + " Price: $" + price.toPlainString());
         } catch (Exception e) {
@@ -135,6 +141,26 @@ public class StockPriceWebSocketHandler extends TextWebSocketHandler {
             System.err.println("Exception while fetching stock data: " + e.getMessage());
             return "Error: API request failed.";
         }
+    }
+
+    private void limitCacheSize(){
+        if (cache.size() > 50){
+            String oldestKey = cache.entrySet().stream()
+                    .min(Comparator.comparing(entry -> entry.getValue().createdAt()))
+                    .map(Map.Entry::getKey)
+                    .orElse(null);
+
+            if (oldestKey != null){
+                cache.remove(oldestKey);
+            }
+        }
+    }
+
+    private void cleanUpExpiredCache() {
+        System.out.println("Running cache cleanup...");
+        cache.entrySet().removeIf(entry ->
+                Instant.now().isAfter(entry.getValue().createdAt().plusSeconds(CACHE_DURATION_SECONDS))
+        );
     }
 }
 
